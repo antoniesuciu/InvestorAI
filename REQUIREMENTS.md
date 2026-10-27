@@ -16,7 +16,7 @@ The foundation deliverables, `REQUIREMENTS.md` and `AGENTS.md`, have been review
 
 ### Current phase — Phase 1: Financial Data & News Research
 
-**Status:** Scope defined; research has not started. Research will be performed in a subsequent task.
+**Status:** The five Phase 1 research documents have been reviewed and approved. Research is complete; Phase 2 implementation has not started.
 
 **Objective:** Investigate and compare completely free financial-data providers, news sources, and relevant financial analysis frameworks. Verify current access conditions and limitations before making evidence-backed recommendations.
 
