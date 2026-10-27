@@ -8,20 +8,41 @@ Research outputs must distinguish evidence from interpretation and uncertainty f
 
 This document is the source of truth for project scope and constraints. The capabilities below describe the long-term direction; they do not authorize immediate implementation.
 
-## 2. Current scope: project foundation only
+## 2. Project phases and current scope
 
-The current deliverables are this requirements document and project-specific Codex instructions in `AGENTS.md`.
+### Foundation — complete
 
-Completion criteria:
+The foundation deliverables, `REQUIREMENTS.md` and `AGENTS.md`, have been reviewed and approved. They establish the project direction, separate immediate work from future capabilities, and define data-cost constraints, financial correctness, reproducibility, engineering, security, and trading safeguards. Existing repository files and Git history have been preserved.
 
-- Immediate work and future capabilities are clearly separated.
-- Data costs, financial correctness, reproducibility, security, and trading safeguards are explicit.
-- Existing files, Git branches, remotes, and history are preserved.
-- Changes are presented for review without committing or pushing.
+### Current phase — Phase 1: Financial Data & News Research
 
-Application code, provider selection, dependency installation, infrastructure configuration, and execution or trading functionality are outside this initialization. Extensive research is also outside scope.
+**Status:** Scope defined; research has not started. Research will be performed in a subsequent task.
 
-The next task is independent research into completely free financial-data providers, news sources, and financial analysis frameworks. It must verify current access conditions and limitations before making recommendations. No provider, framework, database, broker, deployment platform, or detailed implementation design is selected here.
+**Objective:** Investigate and compare completely free financial-data providers, news sources, and relevant financial analysis frameworks. Verify current access conditions and limitations before making evidence-backed recommendations.
+
+Research coverage must include:
+
+- Historical stock prices and related corporate-action data.
+- Company fundamentals and financial statements.
+- Regulatory filings and company disclosures.
+- Earnings releases and earnings data.
+- Financial news.
+- Analyst estimates, with explicit coverage gaps where suitable free access is unavailable.
+- Economic indicators and their historical revisions.
+- Financial analysis frameworks and libraries relevant to acquiring, normalizing, analyzing, or valuing this data.
+
+**Evaluation criteria:** Compare coverage, historical depth, data quality, rate limits, licensing, reliability, update frequency, and point-in-time availability. For each source, verify that access meets the completely free data constraints in section 3.1, including key or account requirements and restrictions on storage or reuse. Distinguish original releases and historical vintages from revised data, and identify whether timestamps support reconstructing information available at a past decision time.
+
+For frameworks, assess applicable criteria and document maintenance, open-source licensing, data-source dependencies, and whether relevant functionality relies on paid data. Mark inapplicable or unverified criteria explicitly. Distinguish documented reliability from any observed behavior; do not imply testing that has not occurred.
+
+**Expected deliverable:** `docs/DATA_SOURCES.md`, containing evidence-backed comparisons and recommendations. It must:
+
+- Cover each research category and compare candidates against the evaluation criteria.
+- Cite supporting sources, preferably official documentation, terms, and primary disclosures, and record access dates for time-sensitive claims.
+- Distinguish verified facts, observations, assumptions, and unresolved questions; disclose missing evidence and free-access limitations.
+- Recommend sources and frameworks for suitable use cases, explain tradeoffs, and identify alternatives and gaps, especially for point-in-time research.
+
+Completing Phase 1 means delivering this report for review. Recommendations do not authorize integration or implementation. Application code, dependency installation, infrastructure configuration, and execution or trading functionality remain outside Phase 1. No provider, framework, database, broker, deployment platform, or detailed implementation design is selected by this scope definition.
 
 ## 3. Constraints applying to all future development
 
@@ -94,7 +115,7 @@ All capabilities in this section are future work, to be scoped and validated ind
 
 Keep code, detailed research reports, experiments, and datasets in the repository or suitable local storage. Use Obsidian for concise, durable decisions and reusable context; repository documents remain authoritative for current project requirements and implementation details.
 
-Use the existing Git repository. Inspect current state before changes, preserve unrelated work and history, and avoid committing datasets, credentials, caches, or generated artifacts. This initialization must not create commits or push changes.
+Use the existing Git repository. Inspect current state before changes, preserve unrelated work and history, and avoid committing datasets, credentials, caches, or generated artifacts. Commit and push only when authorized by the user.
 
 ### Recommended future `.gitignore`
 

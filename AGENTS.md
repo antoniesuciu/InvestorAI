@@ -4,7 +4,7 @@
 
 Read `REQUIREMENTS.md` before planning, researching, or changing the project. Treat it as the source of truth for constraints and the distinction between current scope and future capabilities. Long-term capabilities do not authorize their implementation; follow the user's current task.
 
-During foundation initialization, produce documentation only. Provider selection and detailed research belong to the next task. Application code, dependency installation, infrastructure, and trading functionality are outside this task.
+For Phase 1: Financial Data & News Research, follow the research scope and completion criteria in section 2 of `REQUIREMENTS.md`. When tasked with the research, produce evidence-backed comparisons and recommendations in `docs/DATA_SOURCES.md`. Application code, dependency installation, infrastructure, and trading functionality remain outside this phase.
 
 ## Financial research and calculations
 
@@ -28,5 +28,5 @@ During foundation initialization, produce documentation only. Provider selection
 - Inspect Git status and relevant existing files before edits. Preserve existing branches, remotes, history, and unrelated changes; use the existing repository without reinitializing it.
 - Keep changes within the requested scope. Examine documentation before updating it, and keep requirements and implementation consistent.
 - Keep credentials, local datasets, caches, and generated outputs out of version control while preserving useful fixtures and reproduction records.
-- During initialization, present changes for review without committing or pushing. For later tasks, commit or push only when authorized by the user.
+- Commit or push only when authorized by the user.
 - Finish with the resulting behavior or documents, validation performed, unresolved concerns, and Git status or changed files.
