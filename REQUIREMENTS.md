@@ -18,6 +18,8 @@ The foundation deliverables, `REQUIREMENTS.md` and `AGENTS.md`, have been review
 
 **Status:** The five Phase 1 research documents have been reviewed and approved. Research is complete; Phase 2 implementation has not started.
 
+**Immediate use:** A private, personal, noncommercial investment research application. Commercial deployment is a separate future concern. The focused stock-price follow-up is appended to `docs/DATA_SOURCES.md`; it evaluates automated personal use and local storage without creating accounts or implementing application code.
+
 **Objective:** Investigate and compare completely free financial-data providers, news sources, and relevant financial analysis frameworks. Verify current access conditions and limitations before making evidence-backed recommendations.
 
 Research coverage must include:
