@@ -4,7 +4,7 @@
 
 Read `REQUIREMENTS.md` before planning, researching, or changing the project. Treat it as the source of truth for constraints and the distinction between current scope and future capabilities. Long-term capabilities do not authorize their implementation; follow the user's current task.
 
-For Phase 1: Financial Data & News Research, follow the research scope and completion criteria in section 2 of `REQUIREMENTS.md`. When tasked with the research, produce evidence-backed comparisons and recommendations in `docs/DATA_SOURCES.md`. Application code, dependency installation, infrastructure, and trading functionality remain outside this phase.
+Phase 1 research is complete and approved; consult `docs/DATA_SOURCES.md` when a task depends on source eligibility or coverage. For Phase 2: Core Financial Data Infrastructure, follow the first SEC EDGAR collector milestone and acceptance criteria in section 2 of `REQUIREMENTS.md`. Implement it only when the user requests implementation; the phase-transition task is limited to documentation and repository hygiene.
 
 ## Financial research and calculations
 

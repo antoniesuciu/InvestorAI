@@ -14,9 +14,9 @@ This document is the source of truth for project scope and constraints. The capa
 
 The foundation deliverables, `REQUIREMENTS.md` and `AGENTS.md`, have been reviewed and approved. They establish the project direction, separate immediate work from future capabilities, and define data-cost constraints, financial correctness, reproducibility, engineering, security, and trading safeguards. Existing repository files and Git history have been preserved.
 
-### Current phase — Phase 1: Financial Data & News Research
+### Phase 1: Financial Data & News Research — complete
 
-**Status:** The five Phase 1 research documents have been reviewed and approved. Research is complete; Phase 2 implementation has not started.
+**Status:** The five Phase 1 research documents and the focused personal-use stock-price follow-up have been reviewed and approved. Phase 1 is complete.
 
 **Immediate use:** A private, personal, noncommercial investment research application. Commercial deployment is a separate future concern. The focused stock-price follow-up is appended to `docs/DATA_SOURCES.md`; it evaluates automated personal use and local storage without creating accounts or implementing application code.
 
@@ -45,6 +45,38 @@ For frameworks, assess applicable criteria and document maintenance, open-source
 - Recommend sources and frameworks for suitable use cases, explain tradeoffs, and identify alternatives and gaps, especially for point-in-time research.
 
 Completing Phase 1 means delivering this report for review. Recommendations do not authorize integration or implementation. Application code, dependency installation, infrastructure configuration, and execution or trading functionality remain outside Phase 1. No provider, framework, database, broker, deployment platform, or detailed implementation design is selected by this scope definition.
+
+### Current phase — Phase 2: Core Financial Data Infrastructure
+
+**Status:** Phase scope and repository hygiene initialized. The first milestone is defined below and has not been implemented. This phase-transition task adds documentation and `.gitignore` only; application code and dependency installation belong to a subsequent implementation task.
+
+**Objective:** Establish a small, modular and reproducible foundation for acquiring and retaining financial data locally. Start with official SEC EDGAR company disclosures. Preserve all constraints in sections 3, 5 and 6; completing research does not relax data-cost, historical-accuracy, reproducibility or security requirements.
+
+#### First milestone — working SEC EDGAR financial-data collector
+
+Deliver a working collector for an explicit, configurable small watchlist of US reporting companies. Collect company/submission metadata and reported financial facts through official SEC EDGAR public interfaces, with links to the original filings. Keep the initial fact set focused on reported income-statement, balance-sheet and cash-flow information; a complete standardized accounting database is outside this milestone.
+
+Acceptance criteria for the later implementation:
+
+- A documented local command collects data for the configured watchlist and reports success, partial results and failures per company. Expose collection and retrieval through clear programmatic interfaces so the CLI, agents and a later web frontend can use the same backend functionality. Preserve CIK and source identifiers rather than treating ticker symbols as permanent identities.
+- Use free official access with declared contact identity, a shared request budget within the current SEC policy, bounded retries/backoff and explicit error handling. Recheck access policy when implementation begins; do not silently fall back to another provider.
+- Save permitted raw responses and a retrieval manifest locally with source URLs, retrieval times, source identifiers, schema/parser versions and available filing/accession references. Keep downloaded data and databases in ignored storage paths.
+- Preserve reported periods, units, currencies, taxonomy/context and filing/version information. Distinguish reported values from derived transformations and keep missing values distinct from zero. Expose custom-tag, dimensional and unavailable-field limitations.
+- Keep reporting-period end, filing/acceptance dates, evidenced public availability and our retrieval time separate. Preserve revisions and amendments; do not silently overwrite earlier evidence or claim a certified historical reconstruction from today's aggregate facts alone.
+- Repeated runs and restarts avoid duplicate records and preserve changed source versions. Caching and incremental retrieval reduce unnecessary requests without disguising input age or provenance.
+- Support scheduled invocations for the watchlist with source-specific update cadence, a shared provider request budget and no overlapping duplicate work. Record the last successful refresh and failed attempts separately; a failed refresh or cache read must not make old data appear newly published or collected. A local schedule is sufficient; no scheduler service is selected here.
+- Keep acquisition, local persistence and financial interpretation independently testable through simple module boundaries; select concrete storage/tooling only when justified by the implementation task.
+- Reconcile a small sample of collected values against original filings. Meaningful offline checks with reviewed synthetic fixtures cover parsing, units/periods, missing/error cases, revision preservation and repeatable ingestion. Document reproduction from permitted saved inputs and any live-access verification gaps.
+
+**Milestone exclusions:** stock-price-provider integration, news or macro ingestion, valuation/forecasting models, portfolio features, autonomous investment decisions, and execution or trading. The price-source recommendation remains research context, not an integration prerequisite. No broker account, cloud infrastructure or distributed service is required for this milestone.
+
+#### Early subsequent milestone — interactive web research dashboard
+
+Begin this milestone after the core financial-data pipeline is working and its data/provenance checks pass. Deliver a first interactive view of the available watchlist and company financial data, with source references, reporting periods and data freshness visible. Expand incrementally toward market overviews, company financial analysis, valuation models, AI research, news monitoring, watchlists and portfolio analytics as their underlying data and analysis capabilities are implemented and validated. This does not bring those later backend features into the first collector milestone.
+
+Keep financial-data access and analysis behind clear shared backend interfaces used by both programmatic agents and the future frontend; financial calculations and provider access rules belong in the backend. Return provenance, availability/quality limitations and refresh status alongside results. Show relevant source publication/observation times, last successful collection and stale, missing or failed-refresh states without confusing reporting periods with release times.
+
+Provide scheduled backend updates within source permissions and rate/daily limits, coordinated across agent activity and dashboard use. Use caching and bounded refresh requests so opening a page does not trigger uncontrolled upstream calls. The frontend framework, web transport and deployment architecture remain undecided. Dashboard implementation is outside this phase-initialization task.
 
 ## 3. Constraints applying to all future development
 
@@ -89,6 +121,7 @@ All capabilities in this section are future work, to be scoped and validated ind
 | Research records | Store investment theses, supporting and contradictory evidence, assumptions, catalysts, invalidation conditions, revisions, and historical predictions. Link conclusions to their supporting sources and model versions. |
 | Portfolio analysis | Monitor holdings, cash flows, performance, allocation, diversification, and risk. Use appropriate benchmarks and explicit valuation currency and return methodology. |
 | Autonomous monitoring | Monitor permitted news, earnings, and macroeconomic releases; identify material changes, update versioned theses, flag contradictory evidence, and evaluate prior predictions. Make autonomous activity observable and bounded. |
+| Interactive web dashboard | Provide market overviews, company financial analysis, valuation models, AI research, news monitoring, watchlists and portfolio analytics incrementally. Reuse the same backend data/analysis interfaces as programmatic agents, expose data freshness and provenance, and support provider-compliant scheduled updates. The first dashboard milestone follows a working core pipeline; no frontend framework is selected. |
 | Simulation | Support paper trading and simulated portfolios with traceable decisions, independent risk checks, and realistic execution assumptions. Simulation must remain isolated from live execution. |
 | Broker integration | Eventually support broker APIs through a separate execution boundary, only after explicit authorization, enforced risk controls, and a separately reviewed scope. |
 
@@ -96,6 +129,8 @@ All capabilities in this section are future work, to be scoped and validated ind
 
 - **Python first:** Prefer established open-source libraries. Introduce Rust or C++ only when benchmarks identify a material bottleneck and justify the added complexity.
 - **Modularity:** Keep data acquisition and normalization, research and modeling, investment decisions, risk management, and execution logically separate. Begin with simple module boundaries; this does not require separate services.
+- **Shared backend interfaces:** Expose data and analysis through clear, testable interfaces for programmatic agents and a future web frontend. Keep financial logic, permissions, caching and provider limits in the shared backend; defer transport and frontend framework choices until needed.
+- **Freshness and scheduled updates:** Track source observation/publication times, retrieval times, successful refreshes and failures distinctly. Make stale/missing/uncertain states visible in programmatic responses and the dashboard. Coordinate scheduled and on-demand work within provider limits, with bounded retries and no duplicate overlapping collection.
 - **Testability:** Keep financial calculations independently testable and external integrations replaceable. Use deterministic fixtures and meaningful tests of calculations, data transformations, and failure behavior as implementation begins.
 - **Local storage and caching:** Retain permitted source material separately from derived data, with traceable transformations. Make historical inputs recoverable where licensing allows. Choose storage technology after access patterns and data requirements are understood.
 - **Efficiency:** Minimize unnecessary requests and repeated computation. Measure representative workloads before optimizing or adding infrastructure.
@@ -119,41 +154,11 @@ Keep code, detailed research reports, experiments, and datasets in the repositor
 
 Use the existing Git repository. Inspect current state before changes, preserve unrelated work and history, and avoid committing datasets, credentials, caches, or generated artifacts. Commit and push only when authorized by the user.
 
-### Recommended future `.gitignore`
+### Version control and local storage
 
-Create a `.gitignore` when project tooling and storage paths are introduced. A suitable starting point is:
+The root `.gitignore` defines repository exclusions for Python environments/caches, credentials, downloaded datasets/databases, generated outputs, IDE settings and OS files. Place downloaded data in ignored local-storage paths such as `data/`, `datasets/` or `downloads/`; keep authored research documentation in `docs/`. These are storage conventions, not authorization to create infrastructure or acquire data.
 
-```gitignore
-# Python environments, builds, and caches
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-build/
-dist/
-*.egg-info/
-.ipynb_checkpoints/
-
-# Local credentials and configuration
-.env
-.env.*
-!.env.example
-.secrets/
-
-# Proposed local storage and generated output paths
-data/
-cache/
-artifacts/
-logs/
-```
-
-These storage paths are recommendations, not an established directory layout. Keep reviewed synthetic test fixtures, dependency lockfiles, reproducibility manifests, and authored research reports versioned. Example configuration must contain placeholders only. Ignore rules do not remove already tracked secrets or replace credential handling.
+Keep source code, tests, reviewed synthetic test fixtures, dependency lockfiles, reproducibility manifests, and authored research reports versioned. Synthetic data files may live in `tests/fixtures/` or `fixtures/`, which have data-file exceptions; downloaded financial datasets and real credentials do not belong there. Example configuration must contain placeholders only. Ignore rules do not remove already tracked files or replace credential handling. Review any already tracked sensitive or generated material with the user before deleting it or removing it from version control.
 
 ## 8. Questions for later investigation
 
