@@ -1,0 +1,9 @@
+watchlist = ["AAPL", "MSFT"]
+data_dir = "data/sec"
+cache_hours = 24
+
+# Explicit identifiers avoid downloading the full ticker directory for this list.
+# The collector verifies these associations against official submissions metadata.
+[cik_overrides]
+AAPL = "0000320193"
+MSFT = "0000789019"

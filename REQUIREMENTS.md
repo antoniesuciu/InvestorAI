@@ -48,15 +48,15 @@ Completing Phase 1 means delivering this report for review. Recommendations do n
 
 ### Current phase — Phase 2: Core Financial Data Infrastructure
 
-**Status:** Phase scope and repository hygiene initialized. The first milestone is defined below and has not been implemented. This phase-transition task adds documentation and `.gitignore` only; application code and dependency installation belong to a subsequent implementation task.
+**Status:** Milestone 1 — the SEC EDGAR collector — is complete, live-validated and approved by the user on 2026-10-27. The user has authorized committing and pushing the implementation, tests and documentation. Collection using the user's configured identity saved 1,433 AAPL observations and 1,625 MSFT observations, with all seven selected metrics present. All 28 sampled values matched original annual/quarterly filings; raw replay, revision separation and offline cache inspection passed. Independent verification of Gemini's review added fixes for fiscal evidence/quarter semantics, interrupted raw writes, ticker aliases and compatible submissions metadata; all 52 automated tests pass. The earlier URL-only User-Agent bug was corrected by requiring an application name and contact email. See `docs/SEC_COLLECTOR_VALIDATION.md` and `docs/SEC_COLLECTOR_REVIEW_RESPONSE.md` for evidence, finding dispositions and preserved limitations, and `README.md` for setup and usage. Phase 2 remains current; no additional feature implementation is authorized by this completion task.
 
 **Objective:** Establish a small, modular and reproducible foundation for acquiring and retaining financial data locally. Start with official SEC EDGAR company disclosures. Preserve all constraints in sections 3, 5 and 6; completing research does not relax data-cost, historical-accuracy, reproducibility or security requirements.
 
-#### First milestone — working SEC EDGAR financial-data collector
+#### First milestone — working SEC EDGAR financial-data collector — complete and approved
 
 Deliver a working collector for an explicit, configurable small watchlist of US reporting companies. Collect company/submission metadata and reported financial facts through official SEC EDGAR public interfaces, with links to the original filings. Keep the initial fact set focused on reported income-statement, balance-sheet and cash-flow information; a complete standardized accounting database is outside this milestone.
 
-Acceptance criteria for the later implementation:
+Acceptance criteria:
 
 - A documented local command collects data for the configured watchlist and reports success, partial results and failures per company. Expose collection and retrieval through clear programmatic interfaces so the CLI, agents and a later web frontend can use the same backend functionality. Preserve CIK and source identifiers rather than treating ticker symbols as permanent identities.
 - Use free official access with declared contact identity, a shared request budget within the current SEC policy, bounded retries/backoff and explicit error handling. Recheck access policy when implementation begins; do not silently fall back to another provider.

@@ -1,0 +1,52 @@
+# Independent verification of Gemini's SEC collector review
+
+Reviewed on **2026-10-27** against the actual Python implementation and `geminireview.md`. Gemini's conclusions were treated as hypotheses. The starting suite passed 29 tests; new defect reproductions were run against the unchanged code before fixes. The final suite passes **52 tests**. No commit or push was performed.
+
+## Finding dispositions
+
+| Finding | Independent assessment | Action |
+| --- | --- | --- |
+| 1.1 — Comparative revisions lack fiscal labels | **Partially valid.** Fiscal-year filtering missed some comparative revisions. The original values, dates, units, accessions and intervals were retained; unknown labels alone did not establish lookahead bias or lost restatements. Amendments matching their own report period already retained labels. | Recover labels only from an unambiguous, exactly matching reported interval/type. Retain label evidence accessions and filing dates, and exclude evidence filed after the observation. Unresolved/conflicting labels stay unknown. Never substitute a later filing's `fy/fp` for the older period. |
+| 1.2 — Raw writes are not atomic | **Valid.** Partial writes under the final content-hash filename caused checksum errors on retry. This affects that raw object, not necessarily every company or the entire store. | Write raw bytes to a unique temporary sibling and publish with `os.replace`, as with JSON. Tests cover partial writes, disk-error exceptions, KeyboardInterrupt, abrupt process exit and retry. Existing corrupt objects still fail closed; they are not silently overwritten or deleted. |
+| 1.3 — Annual balances receive quarter 4 | **Valid ambiguity.** A year-end instant also coincides with the end of Q4, so its amount was not wrong. However, automatically mapping `FY` to quarter 4 obscured annual versus interim context. | Preserve `fiscal_period="FY"` and set `fiscal_quarter=None` for annual balances. Explicit interim quarter labels remain available. |
+| 2.1 — Cumulative flows receive quarter numbers | **Valid ambiguity.** `period_type` already kept these flows separate and no subtraction/addition was performed. The quarter field nevertheless invited misuse. | Six-/nine-month flows retain the reporting focus in `fiscal_period`, such as `Q3`, but have `fiscal_quarter=None`. |
+| 2.2 — Q1 is both quarterly and YTD | **Valid metadata gap; the duration classification was not incorrect.** Q1 is a standalone three-month interval as well as the first cumulative interval. Missing standalone later-quarter cash flows cannot be created by relabeling. | Add `is_year_to_date` and its interpretation basis. A known Q1 quarter is both quarterly and YTD; longer inferred cumulative/full-year intervals are identified with an explicit inference basis. No quarterly cash-flow derivation was added. |
+| 2.3 — Exact date matching fails for 52/53-week filers | **General claim unverified; automatic tolerance rejected.** A mismatch does leave labels unknown, intentionally. A 52/53-week calendar does not itself prove a cover/XBRL discrepancy. Neither AAPL nor MSFT had a 1–2-day discrepancy in the inspected observations. | Keep exact matching. Tests cover 52/53-week durations and a synthetic two-day mismatch that remains unknown. Matching another filing's exact interval can supply evidence; dates are never shifted or rounded to month-end. Transition/stub calendars remain a documented limitation. |
+| 2.4 — Dot/dash share-class aliases fail | **Valid.** The directory lookup and submissions check both used literal ticker equality. An override alone did not fix it. | Normalize dot/dash aliases consistently in lookup, overrides, verification and offline inspection. Retain official ticker values and require an actual SEC CIK association. Ambiguous aliases are rejected. Live `BRK.B` lookup resolved CIK `0001067983`, whose official submissions list `BRK-B`. |
+| 2.5 — Historical-file limit lacks windowing | **Valid, deferred design limitation.** More than 20 historical files remains outside this bounded collector. | Replace the unusable "narrow this collection" advice with the supported fallback: omit `--filing-history`. A regression verifies that fallback preserves unloaded-file descriptors. Pagination/windowing is deferred. |
+| 2.6 — Missing columns trigger duplicate-accession conflicts | **Valid conditional reliability defect.** Reproduced with overlapping accession rows and a new column present only in current metadata. No actual SEC schema outage was claimed. | Merge non-conflicting fields. Disagreements in shared fields still raise an explicit error. Both cases are tested. |
+| 3.1 — JSON decoded twice | **Valid redundancy, deferred.** Visible in `SecClient.get` validation followed by `Response.json`; no representative performance bottleneck was measured. | Preserve current behavior. Optimizing parsed-payload ownership/caching requires a separate measured change. |
+| 3.2 — No gzip wastes 10–20× bandwidth | **Opportunity valid; numerical and protocol claims unsupported.** Requests explicitly use identity encoding, but the claimed factor was not measured. The client uses HTTPS, not plain HTTP. | Defer compression. It needs bounded decompression and a defined raw-byte/provenance convention, beyond these correctness fixes. |
+| 3.3 — Missing regression tests | **Valid.** Existing tests did not cover all listed scenarios. | Add 23 synthetic/offline tests, including companies output, text inspection of zero/negative values, date mismatches, interruption recovery and the confirmed defects. Update two earlier assertions to the clarified fiscal semantics. |
+
+The review's broader suggestion of unprotected concurrent collector jobs was not reproduced: existing same-store collection locking already prevents overlap. Raw-object interruption safety was a distinct confirmed problem. Atomic replacement protects publication from process interruption; it is not a power-loss durability guarantee.
+
+## Financial interpretation after the corrections
+
+- `filing_fiscal_year` and `filing_fiscal_period` remain unchanged source values. `fiscal_year` and `fiscal_period` are separate interpreted fields.
+- Fiscal evidence comes from a selected observation whose end exactly matches its own 10-K/10-Q report date, including amendments. Matching comparative observations must have exactly the same start/end and duration category. A same-end stub with a different start does not inherit annual labels.
+- `fiscal_label_basis` distinguishes direct report-period evidence from matching-period enrichment; `fiscal_label_sources` retains the evidence accessions/dates. Evidence filed after the value observation is excluded. Conflicts yield `ambiguous_fiscal_period` rather than an arbitrary winner.
+- `fiscal_quarter` labels a standalone quarter or explicitly labeled interim balance instant. It is null for cumulative flows and for a reporting focus of FY. A short flow in a year-end filing does not automatically become Q4; deriving its calendar needs separate evidence.
+- `is_year_to_date` remains null for instants and unresolved short-period contexts. Its basis distinguishes duration inference from a known Q1 quarter label. The existing 330–400, 70–110 and 150–300-day categories remain heuristics, including for potentially nonstandard/stub periods.
+- No revised value is moved to an earlier filing date. The filing-date filter remains explicitly uncertified for point-in-time research: current SEC aggregates and day-precision label evidence cannot establish complete historical/intraday availability.
+
+Parser version is now **3**, distinguishing the final date-bounded interpretation from original version 1 and the intermediate version 2 live check. Old snapshots and raw responses remain intact; record IDs change when interpreted metadata changes. The JSON container format remains compatible. Cached records from an older parser are not reused as current output.
+
+Additional ticker regressions found that a ticker literally named `CIK` was misclassified as a prefixed numeric identifier, and duplicate-CIK suppression could hide a wrong ticker override. Both were reproduced and fixed. Dot/dash override collisions and ambiguous local ticker matches now require an explicit, consistent CIK.
+
+## Final validation
+
+| Company | Final observations | Fiscal labels recovered from exact prior/equal-date evidence | Still unknown fiscal year | Final snapshot |
+| --- | ---: | ---: | ---: | --- |
+| AAPL | 1,433 | 828 | 58 | `684fff1c84214139929e1cda2cabeeef` |
+| MSFT | 1,625 | 946 | 74 | `fff8cb7cfb6d4c6f9872b03d1bb28267` |
+
+The final parser collected both companies successfully using the configured real SEC contact, with all seven metrics and no emitted quality flags in these samples. The 28 original-filing values documented in [the initial validation](SEC_COLLECTOR_VALIDATION.md) remained unchanged. Checksums and exact raw replay passed; previous snapshots remained readable and unchanged.
+
+Cached collection and CLI inspection then ran with SEC request calls patched to fail and DNS/socket connections explicitly forbidden. Both returned cached observations, made zero network calls and preserved snapshot IDs/retrieval times. Detailed local evidence is in ignored `data/sec/verification/review_validation.json`; the contact identity is excluded from reports and versioned files.
+
+Automated command: `PYTHONPATH=src python3 -m unittest discover -s tests -v` — **52 tests pass**, including an actual child-process exit during a raw write and restart without a partial final object. This is process-interruption testing, not a simulated hardware/filesystem power failure.
+
+## Remaining risks and deferred work
+
+Historical availability remains uncertified, 132 observations still have unknown fiscal years, and transitional fiscal calendars need original-filing evidence rather than fuzzy date matching. Cumulative/full-year duration categories and their YTD flags remain explicitly inferred, not proof of a fiscal-year start for unusual rolling or stub periods. Legacy corrupt raw objects require explicit investigation/recovery; they are not automatically erased. Interrupted processes may leave harmless temporary files/unpublished snapshots. No `fsync`/directory-durability protocol or hardware power-loss guarantee is provided. The 20-history-file bound, compression, duplicate parsing and native Windows support remain deferred. Obsidian tools were unavailable in this session; this repository report preserves the decisions for future memory updates.
