@@ -24,6 +24,19 @@ METRICS = {
 }
 INSTANT_METRICS = {"assets", "liabilities", "cash"}
 
+# Additional concepts are parsed only when requested by the offline analysis adapter.
+# The collector's original seven-metric contract remains unchanged.
+ANALYSIS_METRICS = {
+    **METRICS,
+    "gross_profit": ("GrossProfit",),
+    "operating_income": ("OperatingIncomeLoss",),
+    "current_assets": ("AssetsCurrent",),
+    "current_liabilities": ("LiabilitiesCurrent",),
+    "equity": ("StockholdersEquity",),
+    "noncurrent_debt": ("LongTermDebtNoncurrent",),
+}
+ANALYSIS_INSTANT_METRICS = INSTANT_METRICS | {"current_assets", "current_liabilities", "equity", "noncurrent_debt"}
+
 
 def filing_index(submissions: dict, historical: list[dict] | None = None) -> dict:
     """Join only by accession; recent and optional older SEC columnar arrays."""
@@ -110,7 +123,8 @@ def label_fiscal_periods(records: list[dict]) -> list[dict]:
 
 
 def extract_facts(companyfacts: dict, submissions: dict, *, retrieved_at: str,
-                  source_url: str, historical: list[dict] | None = None) -> list[dict]:
+                  source_url: str, historical: list[dict] | None = None,
+                  metrics: dict | None = None) -> list[dict]:
     cik = normalize_cik(companyfacts.get("cik", ""))
     if cik != normalize_cik(submissions.get("cik", "")):
         raise SecError("CompanyFacts and submissions CIKs differ")
@@ -120,7 +134,7 @@ def extract_facts(companyfacts: dict, submissions: dict, *, retrieved_at: str,
     if not isinstance(taxonomy, dict):
         raise SecError("CompanyFacts lacks a US-GAAP facts object")
     records = []
-    for metric, concepts in METRICS.items():
+    for metric, concepts in (METRICS if metrics is None else metrics).items():
         for concept in concepts:
             definition = taxonomy.get(concept, {})
             if not isinstance(definition, dict) or not isinstance(definition.get("units", {}), dict):
@@ -145,7 +159,7 @@ def extract_facts(companyfacts: dict, submissions: dict, *, retrieved_at: str,
                     except (KeyError, TypeError, ValueError) as exc:
                         raise SecError(f"Invalid {concept} observation: {exc}") from exc
                     flags = []
-                    if (metric in INSTANT_METRICS) != (kind == "instant"):
+                    if (metric in ANALYSIS_INSTANT_METRICS) != (kind == "instant"):
                         flags.append("unexpected_duration_for_metric")
                     if unit != "USD":
                         flags.append("non_usd_unit")

@@ -1,6 +1,6 @@
 # Investor AI
 
-A private, personal investment research platform, developed incrementally using completely free data. **Phase 2 Milestone 1 — the local SEC EDGAR collector — is complete and approved.** It collects, stores and exposes company financial observations with filing provenance. See [REQUIREMENTS.md](REQUIREMENTS.md) for scope and [Phase 1 research](docs/DATA_SOURCES.md) for source evaluations. The limitations below remain applicable; later platform capabilities are future work.
+A private, personal investment research platform, developed incrementally using completely free data. **Phase 2 Milestone 1 — the local SEC EDGAR collector — is complete and approved. Milestone 2 — the offline Financial Analysis Engine — is complete and approved on 2026-10-28.** Both preserve filing provenance and reporting periods. See [REQUIREMENTS.md](REQUIREMENTS.md) for scope and [Phase 1 research](docs/DATA_SOURCES.md) for source evaluations. The limitations below remain applicable; later platform capabilities are future work.
 
 ## Setup
 
@@ -29,6 +29,18 @@ python3 -m investor_ai inspect AAPL --snapshot SNAPSHOT_ID --json
 ```
 
 Global `--config` and `--data-dir` options precede the subcommand. Collection is bounded to 20 identifiers per run. JSON collection results report `success`, `partial` (selected metrics missing), `cached` (with any missing metrics), or `failed` per company. Any failed company produces exit status 1; partial collections remain usable and return 0. Missing metrics are absent, never filled with zero. Metric availability is across the snapshot, not a completeness guarantee for every period.
+
+## Offline financial analysis
+
+```sh
+python3 -m investor_ai analyze AAPL --frequency annual --limit 2
+python3 -m investor_ai trends MSFT --frequency quarterly --limit 8
+python3 -m investor_ai analyze AAPL --as-of 2026-10-27 --json --limit 0
+```
+
+Analysis needs saved snapshots, not a User-Agent or network connection. It calculates YoY revenue/net-income growth, three profit margins, FCF, liabilities/assets, current ratio, cash/current liabilities and noncurrent debt/equity. The last metric is a debt subset, not total debt/equity. Missing/negative-base/ambiguous results have explicit statuses; text cells include underlying reasons and diagnostic flags. `--json` includes formulas and all source inputs. `--concept METRIC=CONCEPT` can resolve a documented accounting-concept ambiguity.
+
+Historical cutoffs use **known observation times**: snapshots and inputs collected after the cutoff are excluded. Dates before the first saved snapshot are refused; today's aggregate facts are not retroactively certified history. Calculations reconcile latest known values to a shared filing basis; unchanged comparatives and partial amendments preserve usable history. Annual balances prioritize 10-K evidence. Cross-filing cash-flow conversion requires exact reviewed original-filing evidence, aligned periods and reconciled revisions; unsupported results remain unavailable. The optional ignored `data/sec/analysis_evidence.json` registry (or `--evidence PATH`) is verified locally, including source-document hashes and review availability. See [FINANCIAL_ANALYSIS.md](docs/FINANCIAL_ANALYSIS.md) for the evidence schema, formulas and limitations, and [the analysis review response](docs/FINANCIAL_ANALYSIS_REVIEW_RESPONSE.md) for real Q2/Q3/Q4 validation.
 
 ## Financial interpretation and provenance
 
@@ -72,7 +84,7 @@ PYTHONPATH=src python3 -m unittest discover -s tests -v
 
 Tests use invented local fixtures only. They exercise fiscal/calendar distinctions, 52/53-week periods, cumulative cash flows, revisions, concepts/currencies, zero versus missing values, precise JSON decoding, ticker/CIK validation, raw replay, snapshots, failed refreshes, cache integrity, overlap prevention, CLI configuration/filtering, request identity, rate limits and bounded retries.
 
-On 2026-10-27, all 52 offline tests passed on Python 3.12.3, including User-Agent validation, comparative fiscal evidence, quarter/cumulative distinctions, alias resolution, metadata evolution and process-interruption recovery. See [the independent review response](docs/SEC_COLLECTOR_REVIEW_RESPONSE.md) for every Gemini finding, confirmed fixes and deferred work. The final fiscal parser is version 3; old snapshots remain available.
+On 2026-10-28, all 122 offline tests passed on Python 3.12.3: 52 collector regressions and 70 analysis tests. Coverage includes User-Agent validation, fiscal evidence, cross-filing Q2/Q3/Q4 safeguards, aliases, metadata evolution, interruption recovery, financial formulas, partial amendments, restatements, source integrity, intraday cutoffs, distressed balances and CLI diagnostics. See [the collector review response](docs/SEC_COLLECTOR_REVIEW_RESPONSE.md), [the analysis documentation](docs/FINANCIAL_ANALYSIS.md) and [the complete Milestone 2 review reconciliation](docs/FINANCIAL_ANALYSIS_REVIEW_RESPONSE.md) for validation and outstanding limits. The collector fiscal parser remains version 3; old snapshots remain available.
 
 The earlier HTTP 403 was traced to that identity: the response was an SEC/Akamai HTML page titled "Your Request Originates from an Undeclared Automated Tool." Against the identical AAPL submissions URL, host curl returned HTTP 200 with the user's supplied email-form identity; changing only the Python client's User-Agent to that identity also returned HTTP 200. Python's existing `Accept: application/json` and `Accept-Encoding: identity` headers worked unchanged. No proxy or custom certificate configuration was present in the host process. The separate sandbox launcher failed before executing even a network-free command (`bwrap: loopback: Failed RTM_NEWADDR`); escalated host curl and Python requests succeeded, so that launcher issue did not explain the host HTTP 403. No proxy substitution, browser impersonation, access-control bypass or transport replacement was used.
 
