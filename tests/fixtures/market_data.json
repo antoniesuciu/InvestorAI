@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "provider": "synthetic",
+  "feed": "synthetic",
+  "instrument": {
+    "id": "SYNTH-XNAS",
+    "symbol": "SYNTH",
+    "mic": "XNAS",
+    "currency": "USD",
+    "cik": "0000123456",
+    "timezone": "America/New_York"
+  },
+  "adjustment": "raw",
+  "adjustment_as_of": null,
+  "coverage": {"start": "2024-11-27", "end": "2024-12-02"},
+  "action_coverage": {"start": "2024-11-27", "end": "2024-12-02", "complete": true},
+  "calendar": {
+    "start": "2024-11-27",
+    "end": "2024-12-02",
+    "sessions": [
+      {"date": "2024-11-27", "open_at": "2024-11-27T14:30:00Z", "close_at": "2024-11-27T21:00:00Z"},
+      {"date": "2024-11-29", "open_at": "2024-11-29T14:30:00Z", "close_at": "2024-11-29T18:00:00Z"},
+      {"date": "2024-12-02", "open_at": "2024-12-02T14:30:00Z", "close_at": "2024-12-02T21:00:00Z"}
+    ]
+  },
+  "pages": [
+    {
+      "bars": [
+        {"date": "2024-11-27", "open": "100", "high": "102", "low": "99", "close": "100", "volume": "1000"},
+        {"date": "2024-11-29", "open": "50", "high": "52", "low": "49", "close": "51", "volume": "2000"}
+      ],
+      "actions": [
+        {"id": "SYNTH-SPLIT-1", "kind": "split", "ex_date": "2024-11-29", "ratio": "2", "declared_at": "2024-11-01T12:00:00Z"}
+      ]
+    },
+    {
+      "bars": [
+        {"date": "2024-12-02", "open": "51", "high": "54", "low": "50", "close": "53", "volume": "500"}
+      ],
+      "actions": [
+        {"id": "SYNTH-DIVIDEND-1", "kind": "dividend", "ex_date": "2024-12-02", "amount": "1", "currency": "USD", "payment_date": "2024-12-10"}
+      ]
+    }
+  ]
+}

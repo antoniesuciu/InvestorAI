@@ -2,6 +2,8 @@
 
 A private, personal investment research platform, developed incrementally using completely free data. **Phase 2 Milestone 1 — the local SEC EDGAR collector — is complete and approved. Milestone 2 — the offline Financial Analysis Engine — is complete and approved on 2026-10-28.** Both preserve filing provenance and reporting periods. See [REQUIREMENTS.md](REQUIREMENTS.md) for scope and [Phase 1 research](docs/DATA_SOURCES.md) for source evaluations. The limitations below remain applicable; later platform capabilities are future work.
 
+**Milestone 3A — Offline Market Data Infrastructure — is complete and approved on 2026-10-28. Live provider integration is incomplete.** [The provider decision](docs/MARKET_DATA_PROVIDER_DECISION.md) conditionally prefers Alpaca Basic, with account/feed and retention gates unresolved. No real market-data provider is enabled or silently substituted.
+
 ## Setup
 
 Use Python 3.11+ on Linux or macOS. Runtime and tests use only the Python standard library; no API key, account, payment details, database server, or dependency installation is required. The store lock currently uses POSIX `fcntl`.
@@ -43,6 +45,8 @@ Analysis needs saved snapshots, not a User-Agent or network connection. It calcu
 Historical cutoffs use **known observation times**: snapshots and inputs collected after the cutoff are excluded. Dates before the first saved snapshot are refused; today's aggregate facts are not retroactively certified history. Calculations reconcile latest known values to a shared filing basis; unchanged comparatives and partial amendments preserve usable history. Annual balances prioritize 10-K evidence. Cross-filing cash-flow conversion requires exact reviewed original-filing evidence, aligned periods and reconciled revisions; unsupported results remain unavailable. The optional ignored `data/sec/analysis_evidence.json` registry (or `--evidence PATH`) is verified locally, including source-document hashes and review availability. See [FINANCIAL_ANALYSIS.md](docs/FINANCIAL_ANALYSIS.md) for the evidence schema, formulas and limitations, and [the analysis review response](docs/FINANCIAL_ANALYSIS_REVIEW_RESPONSE.md) for real Q2/Q3/Q4 validation.
 
 ## Financial interpretation and provenance
+
+For market-data architecture, usage, adjustment/provenance rules and limits, see [MARKET_DATA.md](docs/MARKET_DATA.md). Its independently stored synthetic evidence does not change the SEC interpretation below.
 
 - Selected entity-wide US-GAAP concepts cover revenue, net income, operating cash flow, capital expenditure, assets, liabilities and cash where present. Alternative concepts and currencies remain separate observations. They are not interchangeable accounting measures. Company-specific tags, dimensional/segment facts and IFRS mapping are outside this collector.
 - Every observation retains the original concept, unit, value, start/end, accession, form, filing date, source fiscal focus and frame, plus available submissions acceptance/report dates, source and filing links, quality flags and retrieval time. Values are decimal strings, without binary floating-point conversion. Raw SEC bytes remain available for exact evidence.
@@ -91,3 +95,16 @@ The earlier HTTP 403 was traced to that identity: the response was an SEC/Akamai
 Live validation subsequently succeeded using the user's configured real contact identity: AAPL saved 1,433 observations and MSFT saved 1,625, with all seven selected metrics present. All 28 sampled values matched their original annual/quarterly SEC filings. Raw replay reproduced both snapshots exactly, and cached collection plus CLI inspection made zero network requests with DNS/connections explicitly forbidden. See [the validation record](docs/SEC_COLLECTOR_VALIDATION.md) for source filings, amounts, period/revision checks and remaining limitations. The local `.env` handoff was read only by the one-off validation wrapper; the application still expects `SEC_USER_AGENT` in its environment or `--user-agent`.
 
 Official references checked on 2026-10-27: [SEC EDGAR APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) and [SEC developer access policy](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data). No paid service or alternate data provider is integrated. Dashboard, AI analysis, forecasts and trading remain future work.
+
+## Offline market-data foundation
+
+```sh
+export PYTHONPATH="$PWD/src"
+python3 -m investor_ai market collect --source tests/fixtures/market_data.json
+python3 -m investor_ai market inspect SYNTH --json --limit 0
+python3 -m investor_ai market inspect SYNTH
+```
+
+These commands use **invented SYNTH prices**, not real AAPL/MSFT data. Market storage defaults to ignored `data/market`, independent of the SEC configuration; global `--data-dir` precedes `market` to select another ignored store. Source files must be explicitly synthetic. The subsystem validates daily OHLCV, explicit calendars, split/dividend records, adjustment modes and historical observation cutoffs. It retains revisions, caches source evidence, follows bounded pages/retries and reports missing sessions instead of filling them. `--refresh` reconciles the full supplied interval; incremental updates recheck a bounded overlap. `market collect --provider alpaca` deliberately fails without a network request until provider rights and a real adapter are implemented.
+
+Market inspection and the pure calculation interfaces work offline. Complete action windows accumulate only with sufficient evidence; gaps and incomplete updates remain explicit. Zero-volume moving-price inputs carry a quality warning, and legitimate special-dividend payment/ex-date ordering is preserved. Split-corrected price returns exclude dividends; total returns, historical share counts, market capitalization, valuation ratios and historical security-universe reconstruction are not implemented. No authenticated market-data validation has been performed. **187 tests pass**, including the unchanged 122-test Milestone 1/2 baseline and one final adversarial integration scenario; both original SEC filing verifiers also pass. All six Gemini findings have documented dispositions in [MARKET_DATA_REVIEW_RESPONSE.md](docs/MARKET_DATA_REVIEW_RESPONSE.md); [MARKET_DATA.md](docs/MARKET_DATA.md) describes the corrected evidence model and limitations. The [final adversarial validation](docs/MARKET_DATA_ADVERSARIAL_VALIDATION.md) records the successful validation of the completed offline Milestone 3A foundation.

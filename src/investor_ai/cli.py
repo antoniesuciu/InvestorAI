@@ -14,6 +14,7 @@ from .financials import METRICS
 from .sec import SecClient, SecError
 from .storage import Store
 from .analysis_store import analyze_company
+from .market_cli import add_market_commands, run_market
 
 
 def _display_amount(metric: dict) -> str:
@@ -33,6 +34,7 @@ def parser() -> argparse.ArgumentParser:
     app.add_argument("--config", type=Path, default=Path("watchlist.toml"))
     app.add_argument("--data-dir", type=Path, help="Local output store; use a Git-ignored path")
     commands = app.add_subparsers(dest="command", required=True)
+    add_market_commands(commands)
     collect = commands.add_parser("collect", help="Retrieve a small watchlist; suitable for a local schedule")
     collect.add_argument("identifiers", nargs="*", help="Tickers, numeric CIKs or CIK-prefixed identifiers")
     collect.add_argument("--user-agent", default=os.environ.get("SEC_USER_AGENT"))
@@ -68,6 +70,8 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == 'market':
+            return run_market(args)
         config = tomllib.loads(args.config.read_text()) if args.config.exists() else {}
         store = Store(args.data_dir or config.get("data_dir", "data/sec"))
         if args.command == "collect":
