@@ -4,6 +4,12 @@ A private, personal investment research platform, developed incrementally using 
 
 **Milestone 3A is approved; Milestone 3B — Live Alpaca Market Data Integration — and Milestone 4 — Interactive Financial Research Dashboard v1 — are implemented and committed locally (`f379dd7` and `b33cf40`, respectively), on explicit user authorization. The dashboard's independent audit and manual review are not confirmed complete; push status is not recorded here.** The user authorized historical SIP collection and private local persistence subject to provider terms. Account/feed wording and indefinite retention remain unverified conditions, not claims of contractual clearance. See [access research](docs/ALPACA_ACCESS.md), [live validation](docs/ALPACA_LIVE_VALIDATION.md) and [dashboard documentation](docs/DASHBOARD.md). No orders, paid upgrade, forecast, valuation, AI or portfolio functionality is included.
 
+## Shared project memory
+
+Codex and Claude Code share `Memories/Projects/InvestorAI/` in Obsidian, following Quant Trading Lab's flat project-folder convention. Start with `Project Overview.md`, then `Current State.md` and the linked SEC EDGAR, Financial Analysis, Market Data and Dashboard notes. These are shared entry points; do not create agent-specific folders or provenance tags.
+
+Prefer Obsidian MCP and verify availability each session. Read existing notes before editing; use the move tool to preserve history and update internal links when relocating notes. Direct filesystem access is a fallback only after verifying the actual vault path and permitted access. Keep durable decisions and current context concise; `REQUIREMENTS.md`, repository documentation, code and tests remain authoritative. Do not copy full reports, datasets or credentials into memory or modify unrelated vault content.
+
 ## Local research dashboard
 
 Explore saved AAPL/MSFT data through Overview, Financials, Statements and Compare. Annual/quarterly charts, daily stock candles, corporate actions, source evidence and freshness use the existing Python calculations and local stores. No dashboard interaction collects data or needs API credentials. Missing data remains unavailable; there is no synthetic production fallback.
