@@ -1,4 +1,4 @@
-"""Versioned offline market evidence. No provider credentials or network access."""
+"""Versioned market evidence; provider HTTP and credential policy stay in sources."""
 
 from contextlib import contextmanager
 from copy import deepcopy
@@ -12,10 +12,10 @@ import time
 import uuid
 
 from .analysis import cutoff, utc_datetime
-from .market_data import MarketDataError, normalize_bundle, merge_action_coverage, coverage_covers, _seal_coverage
+from .market_data import MarketDataError, normalize_bundle, normalize_live_bundle, merge_action_coverage, coverage_covers, _seal_coverage
 from .storage import utc_now, write_bytes, write_json
 
-NORMALIZER_VERSION = '2'
+NORMALIZER_VERSION = '3'
 
 
 def decode(body):
@@ -44,14 +44,16 @@ def _no_secrets(value):
 
 def dataset_key(header):
     identity = {key: header[key] for key in ('instrument', 'provider', 'feed', 'adjustment', 'adjustment_as_of')}
+    if header.get('synthetic') is False:
+        identity['synthetic'] = False  # Preserve existing synthetic series keys.
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
 
 class JsonFileSource:
     """A working paginated source for authored synthetic bundles only.
 
-    No boolean enables licensed market APIs. A future live adapter requires a
-    separately reviewed rights decision; a fixture label is not a data license.
+    No boolean enables licensed market APIs. Real acquisition uses a separate
+    provider adapter; a fixture label is not a data license.
     """
     def __init__(self, path):
         body = Path(path).read_bytes()
@@ -172,7 +174,7 @@ class MarketStore:
                     'retrieved_at': retrieved_at, 'source_fingerprint': fingerprint,
                     'instrument': data['instrument'], 'provider': data['provider'], 'feed': data['feed'],
                     'adjustment': data['adjustment'], 'adjustment_as_of': data['adjustment_as_of'],
-                    'synthetic': True, 'sources': sources, 'data': reference,
+                    'synthetic': data['synthetic'], 'sources': sources, 'data': reference,
                     'previous_snapshot_id': previous['snapshot_id'] if previous else None}
         folder = self.root / 'datasets' / key
         write_json(folder / 'snapshots' / snapshot / 'manifest.json', manifest)
@@ -225,6 +227,7 @@ class MarketStore:
         result['quality']['actions_complete'] = coverage_covers(result['action_coverage'], start=result['coverage']['start'], end=result['coverage']['end'], as_of=at.isoformat())
         result['quality']['zero_volume_sessions'] = [r['date'] for r in result['bars'] if r['volume'] == '0']
         result['quality']['zero_volume_price_movement_sessions'] = [r['date'] for r in result['bars'] if r['volume'] == '0' and r['high'] != r['low']]
+        result['quality']['unknown_cash_currency_events'] = sum(r['kind'] == 'dividend' and r.get('synthetic') is False and r.get('cash_currency') is None for r in result['actions'])
         return {**result, 'as_of': at.isoformat(), 'availability_policy': 'observed_by_cutoff',
                 'snapshot': manifest, 'stored_bar_versions': len(data['bars']),
                 'stored_action_versions': len(data['actions'])}
@@ -233,11 +236,13 @@ class MarketStore:
 def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=24,
                    requests_per_second=2, retries=2, max_requests=100, max_cooldown=60,
                    clock=time.monotonic, sleep=time.sleep):
-    """Collect a bounded paginated source; only synthetic normalized data enabled.
+    """Collect a bounded acquired or synthetic source into versioned local evidence.
 
     The source supplies header, fingerprint and fetch_page(start,end,token)->bytes.
+    An optional prepare(start,end,request_budget,previous) fetches independently scoped evidence and
+    return the final header, after cache lookup and under the collection lock.
     Retries and pagination share one per-invocation request budget and limiter.
-    This is an offline-tested seam, not a live API entitlement or daily quota.
+    Source adapters own HTTP policy; this interface grants no contractual rights.
     """
     for value in (cache_hours, requests_per_second, max_cooldown):
         if not math.isfinite(value) or value < 0:
@@ -248,8 +253,8 @@ def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=
         raise MarketDataError('Invalid request budget/overlap')
     header = deepcopy(source.header)
     _no_secrets(header)
-    if header.get('synthetic') is not True:
-        raise MarketDataError('Live providers remain disabled pending rights verification')
+    if type(header.get('synthetic')) is not bool or (header['synthetic'] is False and not hasattr(source, 'prepare')):
+        raise MarketDataError('Acquired sources require explicit labels and preparation/provenance')
     key = dataset_key(header)
     with store.collection_lock():
         try:
@@ -260,18 +265,28 @@ def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=
                 age = (utc_datetime(now) - utc_datetime(previous['retrieved_at'])).total_seconds()
                 if 0 <= age < cache_hours * 3600:
                     store.status(key, 'cached')
-                    return {'status': 'cached', 'snapshot_id': previous['snapshot_id'], 'dataset_key': key, 'synthetic': True}
+                    return {'status': 'cached', 'snapshot_id': previous['snapshot_id'], 'dataset_key': key, 'synthetic': header['synthetic']}
             start, end = header['coverage']['start'], header['coverage']['end']
-            if old and not refresh:
+            if old and getattr(source, 'requires_full_refresh', False):
+                start, end = min(start, old['coverage']['start']), max(end, old['coverage']['end'])
+            if old and not refresh and not getattr(source, 'requires_full_refresh', False):
                 start = max(start, (date.fromisoformat(old['coverage']['end']) - timedelta(days=overlap_days)).isoformat())
             if start > end:
                 raise MarketDataError('Incremental range precedes current coverage; use refresh for historical reconciliation')
-            header['coverage'] = {'start': start, 'end': end}
-            actions = header['action_coverage']
-            action_start, action_end = max(start, actions['start']), min(end, actions['end'])
-            header['action_coverage'] = {'start': action_start if action_start <= action_end else start,
-                                         'end': action_end if action_start <= action_end else end,
-                                         'complete': actions['complete'] if action_start <= action_end else False}
+            if hasattr(source, 'prepare'):
+                original_kind = header['synthetic']
+                header = deepcopy(source.prepare(start=start, end=end, request_budget=max_requests, previous=None if refresh else old))
+                _no_secrets(header)
+                if (header.get('synthetic') is not original_kind or dataset_key(header) != key or
+                        header.get('coverage') != {'start': start, 'end': end}):
+                    raise MarketDataError('Prepared source changed its series identity or requested price window')
+            else:
+                header['coverage'] = {'start': start, 'end': end}
+                actions = header['action_coverage']
+                action_start, action_end = max(start, actions['start']), min(end, actions['end'])
+                header['action_coverage'] = {'start': action_start if action_start <= action_end else start,
+                                             'end': action_end if action_start <= action_end else end,
+                                             'complete': actions['complete'] if action_start <= action_end else False}
             pages, sources, seen = [], [], set()
             token, calls, last = None, 0, None
             while True:
@@ -309,7 +324,15 @@ def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=
                     raise MarketDataError('Invalid or repeated pagination token')
                 seen.add(token)
             observed = utc_now()
-            data = normalize_bundle({**header, 'pages': pages}, observed_at=observed)
+            evidence_times = [ref['retrieved_at'] for ref in sources]
+            if header.get('evidence_observed_through') is not None:
+                evidence_times.append(header['evidence_observed_through'])
+            if any(utc_datetime(at) > utc_datetime(observed) for at in evidence_times):
+                raise MarketDataError('Source evidence receipt is later than the collection observation time')
+            normalize = normalize_bundle if header['synthetic'] else normalize_live_bundle
+            data = normalize({**header, 'pages': pages}, observed_at=observed)
+            if 'source_metadata' in header:
+                data['source_metadata'] = deepcopy(header['source_metadata'])
             # Each observation points to its original raw page, even after merges.
             for name in ('bars', 'actions'):
                 for row in data[name]:
@@ -331,11 +354,17 @@ def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=
                 incoming = {r['id']: r for r in data['actions']}
                 invalidated_dates = [r['ex_date'] for r in old_actions if r['id'] in incoming and incoming[r['id']]['record_id'] != r['record_id']]
                 present_actions = {r['id'] for r in data['actions']}
+                process = header.get('source_metadata', {}).get('action_process_coverage')
+                if process:
+                    data['quality']['unconfirmed_refresh_actions'] = sorted(r['id'] for r in old_actions
+                        if r.get('process_date') and process['start'] <= r['process_date'] <= process['end'] and r['id'] not in present_actions)
                 if header['action_coverage']['complete'] and any(
                         header['action_coverage']['start'] <= r['ex_date'] <= header['action_coverage']['end'] and r['id'] not in present_actions
                         for r in old_actions):
                     raise MarketDataError('Corporate-action disappearance requires explicit reconciliation')
                 prior_dates = {r['date'] for r in old['bars']}
+                if getattr(source, 'requires_full_refresh', False) and prior_dates - {r['date'] for r in data['bars']}:
+                    raise MarketDataError('Adjusted refresh omitted existing observations; incompatible vintages cannot be merged')
                 data['quality']['unconfirmed_refresh_sessions'] = sorted(prior_dates & set(data['quality']['missing_sessions']))
                 for name in ('bars', 'actions'):
                     identity = 'date' if name == 'bars' else 'id'
@@ -358,7 +387,7 @@ def collect_market(source, store, *, refresh=False, overlap_days=7, cache_hours=
             manifest = store.publish(key, data, sources, retrieved_at=observed, fingerprint=source.fingerprint)
             store.status(key, 'success')
             return {'status': 'success', 'snapshot_id': manifest['snapshot_id'], 'dataset_key': key,
-                    'request_start': start, 'request_end': end, 'requests': calls, 'synthetic': True,
+                    'request_start': start, 'request_end': end, 'requests': calls, 'synthetic': header['synthetic'],
                     'quality': data['quality']}
         except Exception:
             store.status(key, 'failed')

@@ -1,4 +1,4 @@
-"""Pure daily market-data validation over explicitly synthetic offline evidence.
+"""Pure daily market-data validation over explicitly labeled source evidence.
 
 No provider/network/storage operations occur here. Calendar sessions and action
 coverage are evidence supplied by the source, never inferred from weekdays.
@@ -184,16 +184,28 @@ def normalize_bundle(bundle: dict, *, observed_at: str) -> dict:
     Original source bytes and their integrity are the storage adapter's concern.
     """
     try:
+        if not isinstance(bundle, dict) or bundle.get('synthetic') is not True:
+            raise MarketDataError('Only clearly labeled synthetic offline input is enabled here')
         return _normalize(bundle, observed_at)
     except (KeyError, TypeError, ZoneInfoNotFoundError) as exc:
         raise MarketDataError('Missing or malformed market-data metadata') from exc
 
 
+def normalize_live_bundle(bundle: dict, *, observed_at: str) -> dict:
+    """Validate acquired real evidence; this is not a contractual permission grant."""
+    try:
+        if not isinstance(bundle, dict) or bundle.get('synthetic') is not False:
+            raise MarketDataError('Live normalization requires an explicit real-data label')
+        return _normalize(bundle, observed_at)
+    except (KeyError, TypeError, ZoneInfoNotFoundError) as exc:
+        raise MarketDataError('Missing or malformed live market metadata') from exc
+
+
 def _normalize(bundle, observed_at):
     if not isinstance(bundle, dict) or type(bundle.get('schema_version')) is not int or bundle['schema_version'] != 1:
         raise MarketDataError('Expected market bundle schema_version=1')
-    if bundle.get('synthetic') is not True:
-        raise MarketDataError('Only clearly labeled synthetic offline input is enabled')
+    if type(bundle.get('synthetic')) is not bool:
+        raise MarketDataError('A synthetic/real label is required')
     observed = _time(observed_at)
     observed_text = observed.isoformat()
     provider = _identity(bundle['provider'], r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}', 'provider')
@@ -216,6 +228,8 @@ def _normalize(bundle, observed_at):
             raise MarketDataError('Raw prices cannot have an adjustment anchor')
     elif basis is None or _date(basis) > observed.astimezone(zone).date():
         raise MarketDataError('Adjusted prices require an observed adjustment anchor')
+    if not bundle['synthetic'] and adjustment != 'raw' and bundle.get('source_metadata', {}).get('adjustment_anchor_kind') == 'retrieval_day_provider_latest' and basis != observed.astimezone(zone).date().isoformat():
+        raise MarketDataError('Adjustment observation crossed its acquisition date')
     coverage = _range(bundle['coverage'])
     action_coverage = _range(bundle['action_coverage'])
     if type(bundle['action_coverage'].get('complete')) is not bool:
@@ -237,7 +251,9 @@ def _normalize(bundle, observed_at):
     calendar.update(sessions=[sessions[day] for day in sorted(sessions)], observed_at=observed_text)
     context = {'provider': provider, 'feed': feed, 'instrument_id': instrument['id'],
                'currency': instrument['currency'], 'adjustment': adjustment, 'adjustment_as_of': basis,
-               'synthetic': True}
+               'synthetic': bundle['synthetic']}
+    if not bundle['synthetic'] and adjustment != 'raw' and bundle.get('source_metadata', {}).get('adjustment_vintage') is not None:
+        context['adjustment_vintage'] = _identity(bundle.get('source_metadata', {}).get('adjustment_vintage'), r'[a-f0-9]{64}', 'adjustment acquisition vintage')
     # Completeness is scoped evidence, not a transferable boolean. Bind it to
     # the exact source/instrument/representation and its observation time.
     action_coverage.update(context)
@@ -281,8 +297,13 @@ def _normalize(bundle, observed_at):
                 row['ratio'] = _number(value['ratio'], positive=True)
             elif row['kind'] == 'dividend':
                 row['amount'] = _number(value['amount'])
-                if value.get('currency') != instrument['currency']:
+                if bundle['synthetic'] and value.get('currency') != instrument['currency']:
                     raise MarketDataError('Dividend currency does not match the instrument')
+                if not bundle['synthetic']:
+                    currency = value.get('currency') or None
+                    if currency is not None:
+                        _identity(currency, r'[A-Z]{3}', 'dividend cash currency')
+                    row.update(cash_currency=currency, currency_status='reported' if currency else 'unknown')
             else:
                 raise MarketDataError('Unsupported corporate action; no inference is permitted')
             for key in ('declared_at', 'published_at'):
@@ -293,6 +314,15 @@ def _normalize(bundle, observed_at):
                     row[key] = timestamp.isoformat()
             if value.get('payment_date') is not None:
                 row['payment_date'] = _date(value['payment_date']).isoformat()
+            if not bundle['synthetic']:
+                for key in ('process_date', 'record_date'):
+                    if value.get(key) is not None:
+                        row[key] = _date(value[key]).isoformat()
+                for key in ('new_rate', 'old_rate'):
+                    if value.get(key) is not None:
+                        row[key] = _number(value[key], positive=True)
+                if value.get('provider_type'):
+                    row['provider_type'] = value['provider_type']
             row = _stamp(row, context, observed_text, page_index)
             if action_id in actions:
                 if actions[action_id]['record_id'] != row['record_id']:
@@ -303,7 +333,7 @@ def _normalize(bundle, observed_at):
     expected = {day for day in sessions if coverage['start'] <= day <= coverage['end']}
     action_coverage['event_ids'] = sorted(actions)
     action_coverage['evidence_id'] = hashlib.sha256(json.dumps(action_coverage, sort_keys=True).encode()).hexdigest()
-    return {'schema_version': 1, 'synthetic': True, 'instrument': instrument, 'provider': provider, 'feed': feed,
+    return {'schema_version': 1, 'synthetic': bundle['synthetic'], 'instrument': instrument, 'provider': provider, 'feed': feed,
             'adjustment': adjustment, 'adjustment_as_of': basis, 'observed_at': observed_text,
             'coverage': coverage, 'action_coverage': action_coverage, 'calendar': calendar,
             'bars': [bars[day] for day in sorted(bars)], 'actions': [actions[key] for key in sorted(actions)],
@@ -335,7 +365,7 @@ def split_price_return(bars: list[dict], actions: list[dict], *, start: str, end
         if not selected or len({r['record_id'] for r in selected}) != 1:
             raise MarketDataError('Missing or conflicting return endpoint evidence')
         endpoints.append(selected[0])
-    identity = ('instrument_id', 'provider', 'feed', 'currency', 'adjustment', 'adjustment_as_of')
+    identity = ('instrument_id', 'provider', 'feed', 'currency', 'adjustment', 'adjustment_as_of', 'synthetic')
     if endpoints[0]['adjustment'] != 'raw' or any(endpoints[0][key] != endpoints[1][key] for key in identity):
         raise MarketDataError('Return endpoints require compatible raw price evidence')
     if any(action_coverage.get(key) != endpoints[0][key] for key in identity):
@@ -372,4 +402,39 @@ def split_price_return(bars: list[dict], actions: list[dict], *, start: str, end
             'inputs': deepcopy(endpoints + sorted(chosen.values(), key=lambda r: r['id'])),
             'action_coverage': deepcopy(action_coverage),
             'limitations': ['Price return excludes dividends; it is not total return',
-                            'Synthetic offline evidence; no survivorship-free universe is established']}
+                            ('Synthetic offline evidence; no survivorship-free universe is established' if endpoints[0]['synthetic']
+                             else 'No survivorship-free universe is established')]}
+
+
+def adjusted_price_return(bars, *, start, end, as_of):
+    """Price return on one provider split-adjustment vintage; not total return.
+
+    No claim of a complete local action ledger follows from a provider's supplied
+    split-adjusted prices. Dividend/all representations require separate methods.
+    """
+    if _date(start) >= _date(end):
+        raise MarketDataError('Return endpoints must be ordered')
+    cutoff = _time(as_of)
+    rows = []
+    for day in (start, end):
+        candidates = [r for r in bars if r['date'] == day and _time(r['observed_at']) <= cutoff and
+                      (not r.get('published_at') or _time(r['published_at']) <= cutoff)]
+        latest = max((_time(r['observed_at']) for r in candidates), default=None)
+        selected = [r for r in candidates if _time(r['observed_at']) == latest]
+        if not selected or len({r['record_id'] for r in selected}) != 1:
+            raise MarketDataError('Missing or conflicting return endpoints')
+        rows.append(selected[0])
+    identity = ('instrument_id', 'provider', 'feed', 'currency', 'adjustment', 'adjustment_as_of', 'synthetic')
+    if rows[0]['adjustment'] != 'split' or any(rows[0][k] != rows[1][k] for k in identity):
+        raise MarketDataError('Compatible split-adjusted prices in one vintage required')
+    if rows[0]['synthetic'] is False and (not rows[0].get('adjustment_vintage') or rows[0].get('adjustment_vintage') != rows[1].get('adjustment_vintage')):
+        raise MarketDataError('Return endpoints require the same full adjustment acquisition vintage')
+    if not rows[0]['adjustment_as_of']:
+        raise MarketDataError('Adjustment vintage evidence is missing')
+    with localcontext() as context:
+        context.prec = 34
+        value = Decimal(_number(rows[1]['close'], positive=True)) / Decimal(_number(rows[0]['close'], positive=True)) - 1
+    return {'value': str(value), 'unit': 'fraction', 'classification': 'derived', 'formula': 'end_split_close / start_split_close - 1',
+            'start': start, 'end': end, 'as_of': cutoff.isoformat(), 'inputs': deepcopy(rows),
+            'limitations': ['Price return excludes dividends; it is not total return',
+                            'Conditional on provider split adjustments; no complete action ledger or pre-collection availability is certified']}

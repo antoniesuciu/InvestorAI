@@ -8,7 +8,7 @@ The complete Gemini Milestone 2 review was received and reconciled on **2026-10-
 
 - `analysis.analyze(records, as_of=..., frequency="annual", unit="USD", concepts=None, evidence=None)` is a pure interface returning JSON-ready periods, metric values/statuses, formulas and source inputs. It performs no I/O and does not mutate records or the process's Decimal context.
 - `analysis_store.analyze_company(store, identifier, ...)` selects a locally observed snapshot, verifies its normalized/raw checksums, and reparses the existing raw responses. Extra income/balance tags already in CompanyFacts are extracted locally; no network request or collector refresh occurs. It also accepts an explicit `snapshot_id`.
-- Both CLI commands call this same analysis interface. Future dashboard, valuation and agent callers can reuse it directly.
+- Both CLI commands call this same analysis interface. Milestone 4's read-only FastAPI adapter now reuses it for the React dashboard, preserving decimal strings and evidence; see [DASHBOARD.md](DASHBOARD.md). Future valuation and agent callers can reuse it directly.
 
 From the repository root:
 
@@ -121,4 +121,4 @@ The review validation additionally retrieved eight original FY2024 filings succe
 
 ## Remaining limits
 
-The collector's [existing limitations](SEC_COLLECTOR_REVIEW_RESPONSE.md) remain in force. This is a deliberately narrow US-GAAP concept set, with no custom-tag/segment/IFRS mapping or currency conversion. Ratios are not universally appropriate across industries. Noncurrent debt is a subset, capex is gross PP&E cash payments, and no lease reconciliation is implied. Complete fiscal-transition calendars, certified historical dissemination and cross-filing cumulative comparability are not inferred. A missing, ambiguous or unavailable result remains explicit. No forecast, valuation, investment recommendation, AI thesis, portfolio, execution or dashboard functionality is implemented.
+The collector's [existing limitations](SEC_COLLECTOR_REVIEW_RESPONSE.md) remain in force. This is a deliberately narrow US-GAAP concept set, with no custom-tag/segment/IFRS mapping or currency conversion. Ratios are not universally appropriate across industries. Noncurrent debt is a subset, capex is gross PP&E cash payments, and no lease reconciliation is implied. Complete fiscal-transition calendars, certified historical dissemination and cross-filing cumulative comparability are not inferred. A missing, ambiguous or unavailable result remains explicit. No forecast, valuation, investment recommendation, AI thesis, portfolio or execution functionality is implemented. The separately authorized Milestone 4 dashboard displays existing results through the same engine; it does not relax any selection or calculation rule.
