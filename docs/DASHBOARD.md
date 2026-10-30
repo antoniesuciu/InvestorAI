@@ -1,6 +1,6 @@
 # Interactive Financial Research Dashboard v1
 
-Milestone 4 is implemented for review, **not approved, committed or pushed**. It adds a private, local-first interface to the existing SEC collector, Financial Analysis Engine and saved Alpaca evidence. It does not change the financial engines or collect data. Milestone 3B remains separately uncommitted and subject to review.
+Milestone 4 is implemented and committed locally (`b33cf40`) on explicit user authorization, but **not audited or approved**; its independent audit and manual review are not confirmed complete, and push status is not recorded here. It adds a private, local-first interface to the existing SEC collector, Financial Analysis Engine and saved Alpaca evidence. It does not change the financial engines or collect data. Milestone 3B was committed locally as `f379dd7`; the validation records below describe the 2026-10-29 state, when both milestones were uncommitted.
 
 ## Architecture
 
@@ -147,4 +147,4 @@ Milestone 4 additions are the three `dashboard*.py` modules, `tests/test_dashboa
 
 No AI agents, forecasts, valuation/share-price ratios, portfolio, trading, news, watchlist editing, background scheduler, new provider or live refresh UI is implemented. Retention and account/feed conditions in [ALPACA_ACCESS.md](ALPACA_ACCESS.md), incomplete corporate actions, unknown dividend cash currency, adjustment-vintage and SEC comparability limitations remain unchanged. Local snapshots may be old, incomplete or absent; the UI displays those conditions.
 
-Future interfaces can reuse the typed read-only API or Python adapter. New collection controls, valuation models, agents, deployment/authentication or scheduled jobs need separately authorized scope and tests. The recommended next step is the requested independent repository audit followed by manual review, before committing Milestone 4.
+Future interfaces can reuse the typed read-only API or Python adapter. New collection controls, valuation models, agents, deployment/authentication or scheduled jobs need separately authorized scope and tests. The recommended next step is the requested independent repository audit followed by manual review; Milestone 4 was committed (`b33cf40`) before these, and they are not confirmed complete.
