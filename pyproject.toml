@@ -9,6 +9,10 @@ description = "Local, provenance-preserving SEC EDGAR research collector"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+dashboard = ["fastapi==0.162.0", "uvicorn==0.54.0"]
+test = ["pytest==9.2.0", "httpx==0.28.1"]
+
 [project.scripts]
 investor-ai = "investor_ai.cli:main"
 

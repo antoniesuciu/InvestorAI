@@ -132,3 +132,12 @@ $RECYCLE.BIN/
 .Trashes/
 
 # Source, documentation, tests and dependency lockfiles are intentionally kept.
+
+# Milestone 4 local frontend dependencies, build and browser artifacts
+node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/coverage/
+/frontend/playwright-report/
+/frontend/test-results/
+*.tsbuildinfo
