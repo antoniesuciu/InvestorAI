@@ -24,6 +24,21 @@ Money, percentages, ratios and returns retain their backend units. `percent` alr
 
 Evidence drawers expose original decimals, formulas, statuses, exact intervals, accessions, original HTTPS source links, selection/review evidence, observation/publication times where known and sanitized snapshots. Market evidence includes source action fields/hashes and returned trading-calendar sessions. Historical coverage stays visible even after a recent retrieval. Dates before the first eligible local observation can correctly return an availability error.
 
+## Design
+
+The interface is styled as an analyst's working papers: ledger ink (`#14233b`) on cool slate paper, ruled sheets instead of floating cards, and accounting red for negative values. Headline figures carry the accounting double underline used for totals. A highlighter (`#ffe36e`) marks the figure you are tracing: hover or focus a metric or statement cell before opening its evidence. All tokens live at the top of `src/styles.css`.
+
+Type is self-hosted from npm with no network font requests: Source Serif 4 (`@fontsource-variable/source-serif-4`, OFL) for headings and figures, with tabular lining numerals; IBM Plex Sans (`@fontsource/ibm-plex-sans`, OFL, Latin 400/500/600) for interface text.
+
+Motion is limited to one load sequence and responses to your actions:
+
+- On load, the double underlines under the headline figures draw in one after another, and each chart wipes in left to right.
+- Switching views crossfades the new view in; the active navigation and statement-tab markers grow in.
+- The evidence drawer slides in from the right, and the traced value is highlighted.
+- Loading placeholders shimmer, and the reload icon spins while reading.
+
+`prefers-reduced-motion: reduce` disables all animation and transitions. Chart animation is CSS-only (`clip-path`); Recharts' own animation stays off, so chart geometry and tests are unaffected.
+
 ## Checks
 
 ```sh

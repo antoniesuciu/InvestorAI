@@ -23,7 +23,7 @@ export function DataKindBanner({ kind }: { kind?: DataKind }) {
 }
 
 export function Panel({ title, eyebrow, action, children, className = '' }: { title: string; eyebrow?: string; action?: ReactNode; children: ReactNode; className?: string }) {
-  return <section className={`panel ${className}`}><div className="panel-heading"><div>{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h2>{title}</h2></div>{action}</div>{children}</section>;
+  return <section className={`panel ${className}`}><div className="panel-heading"><div><h2>{title}</h2>{eyebrow && <div className="eyebrow">{eyebrow}</div>}</div>{action}</div>{children}</section>;
 }
 
 export function Loading({ label = 'Reading local evidence' }: { label?: string }) {

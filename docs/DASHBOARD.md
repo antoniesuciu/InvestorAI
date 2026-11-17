@@ -85,7 +85,7 @@ Errors use `{ "detail": { "code": "...", "message": "..." } }`: 404 unknown comp
 
 The API accepts loopback clients, trusted localhost/loopback Host headers, and only the exact local Vite origins. CORS allows GET/OPTIONS with no credential support. Other origins, remote clients and mutation methods are rejected. Responses are `no-store` and use `nosniff`/no-referrer headers. Uvicorn commands disable forwarded-header trust and access logging.
 
-Vite binds loopback, proxies only `/api`, does not load a root environment file, exposes only explicitly prefixed public variables and restricts filesystem serving to `frontend`. Secret/environment files, `.git`, local datasets, credentials and agent configuration are denied. There are no external fonts, scripts, images or automatic provider calls. TradingView chart attribution is retained. Browser/source links open only on user action.
+Vite binds loopback, proxies only `/api`, does not load a root environment file, exposes only explicitly prefixed public variables and restricts filesystem serving to `frontend`. Secret/environment files, `.git`, local datasets, credentials and agent configuration are denied. There are no external fonts, scripts, images or automatic provider calls; the two typefaces are OFL packages bundled into the build. TradingView chart attribution is retained. Browser/source links open only on user action.
 
 These boundaries support a single-user local workstation, not multi-user authentication or Internet deployment. The workstation, local stores and installed dependencies remain trusted. Source links require credential-free HTTPS and open only on user action; they are not fetched by the dashboard. A deployed service would require a separate security and licensing review.
 
